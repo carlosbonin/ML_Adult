@@ -1,0 +1,80 @@
+import pandas as pd
+from warnings import simplefilter
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split, GridSearchCV
+from pandas.plotting import scatter_matrix
+import matplotlib.pyplot as plt
+
+# Suppress all types of warnings
+simplefilter(action='ignore')
+
+# Define the column names as per the adult.names file
+column_names = [
+    'age', 'workclass', 'fnlwgt', 'education', 'education-num', 'marital-status',
+    'occupation', 'relationship', 'race', 'sex', 'capital-gain', 'capital-loss',
+    'hours-per-week', 'native-country', 'income'
+]
+
+# Load the dataset
+adult_data = pd.read_csv('C:/Users/Carlos/Meu Drive/Python/Machine Learning/adult/adult.data', header=None, names=column_names, na_values='?', skipinitialspace=True)
+
+# Drop rows with missing values
+adult_data.dropna(inplace=True)
+
+# Encode the 'income' column to integer values
+adult_data['income'] = adult_data['income'].map({'>50K': 1, '<=50K': 0})
+
+# Separate features and labels
+X = adult_data.drop('income', axis=1)
+y = adult_data['income']
+
+# Convert categorical variables to dummy variables
+X = pd.get_dummies(X)
+
+# Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Initialize the k-NN classifier
+knn = KNeighborsClassifier(n_neighbors=3)
+
+# Fit the model to the training data
+knn.fit(X_train, y_train)
+
+# Predict on the test data
+y_pred = knn.predict(X_test)
+
+# Print classification report
+print(classification_report(y_test, y_pred))
+
+# Define the parameter grid for hyperparameter tuning
+param_grid = {
+    'n_neighbors': [1, 3, 5, 7, 9, 11],
+    'metric': ['euclidean', 'manhattan', 'minkowski'],
+    'weights': ['uniform', 'distance']
+}
+
+# Initialize GridSearchCV
+grid_search = GridSearchCV(KNeighborsClassifier(), param_grid, cv=5)
+
+# Fit the grid search to the data
+grid_search.fit(X_train, y_train)
+
+# Print the best hyperparameters
+print("Best hyperparameters:", grid_search.best_params_)
+
+# Fit the model with the best hyperparameters
+best_knn = grid_search.best_estimator_
+best_knn.fit(X_train, y_train)
+
+# Predict on the test data with the best hyperparameters
+y_best_pred = best_knn.predict(X_test)
+
+# Print classification report for the best hyperparameters
+print(classification_report(y_test, y_best_pred))
+
+# Visualization: Scatter matrix for numerical features
+numerical_features = adult_data.select_dtypes(include=['int64', 'float64']).columns
+scatter_matrix(adult_data[numerical_features], alpha=0.2, figsize=(15, 15), diagonal='hist')
+plt.suptitle("Scatter Matrix of Adult Dataset Numerical Features")
+plt.show()
